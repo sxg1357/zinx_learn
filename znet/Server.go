@@ -15,7 +15,7 @@ type Server struct {
 }
 
 func (s *Server) Start() {
-	fmt.Printf("[%s v0.1] start listening on %s:%d", s.ServerName, s.Ip, s.Port)
+	fmt.Printf("[%s v0.1] start listening on %s:%d\r\n", s.ServerName, s.Ip, s.Port)
 
 	addr, err := net.ResolveTCPAddr(s.IpVersion, fmt.Sprintf("%s:%d", s.Ip, s.Port))
 	if err != nil {
@@ -42,10 +42,13 @@ func (s *Server) Start() {
 					buf := make([]byte, 512)
 					cnt, err := conn.Read(buf)
 					if err != nil {
-						fmt.Println("recv msg err...")
+						fmt.Println("recv buf err ", err)
 						continue
 					}
-					fmt.Printf("recv %d bytes from client, msg:%s", cnt, string(buf))
+					if _, err := conn.Write(buf[:cnt]); err != nil {
+						fmt.Println("write back buf err ", err)
+						continue
+					}
 				}
 			}()
 		}
@@ -60,7 +63,7 @@ func (s *Server) Server() {
 }
 
 func (s *Server) Stop() {
-	fmt.Printf("[Stop] %s server...", s.ServerName)
+	fmt.Printf("[Stop] %s server...\r\n", s.ServerName)
 }
 
 func NewServer(name string) ziface.IServer {
