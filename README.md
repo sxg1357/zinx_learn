@@ -1,1 +1,0 @@
-# zinx_learn
