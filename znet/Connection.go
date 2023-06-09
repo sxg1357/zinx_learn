@@ -42,8 +42,9 @@ func (c *Connection) StartReader() {
 	defer fmt.Println(c.RemoteAddr().String(), " conn reader exit!")
 	defer c.Stop()
 	for {
-		buf := make([]byte, 512)
-		cnt, err := c.GetTcpConnection().Read(buf)
+		dp := NewDataPack()
+		headData := make([]byte, dp.GetHeadLen())
+		cnt, err := io.ReadFull(c.GetTcpConnection(), headData)
 		if cnt == 0 {
 			fmt.Println("client close...")
 			c.ExitBufferChan <- true
@@ -54,14 +55,24 @@ func (c *Connection) StartReader() {
 			c.ExitBufferChan <- true
 			continue
 		}
-		//if err := c.HandleFunc(c.Conn, buf, cnt); err != nil {
-		//	fmt.Println("call Handler Api error...")
-		//	c.ExitBufferChan <- true
-		//	return
-		//}
+		msg, err := dp.UnPack(headData)
+		if err != nil {
+			fmt.Println("unpack error")
+			c.ExitBufferChan <- true
+			return
+		}
+		var data = make([]byte, msg.GetDataLen())
+		if msg.GetDataLen() > 0 {
+			_, err := io.ReadFull(c.GetTcpConnection(), data)
+			if err != nil {
+				c.ExitBufferChan <- true
+				continue
+			}
+		}
+		msg.SetData(data)
 		req := Request{
 			conn: c,
-			data: buf[:cnt],
+			data: msg,
 		}
 		go func(request ziface.IRequest) {
 			c.Router.PreHandler(request)
