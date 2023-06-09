@@ -32,10 +32,10 @@ func (m *Message) GetMsgId() uint32 {
 	return m.MsgId
 }
 
-func NewMessage(data []byte, len uint32, msgId uint32) ziface.IMessage {
+func NewMessage(data []byte, msgId uint32) ziface.IMessage {
 	return &Message{
 		Data:   data,
-		MsgLen: len,
+		MsgLen: uint32(len(data)),
 		MsgId:  msgId,
 	}
 }

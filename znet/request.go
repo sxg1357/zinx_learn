@@ -15,3 +15,7 @@ func (r *Request) GetData() []byte {
 func (r *Request) GetConnection() ziface.IConnection {
 	return r.conn
 }
+
+func (r *Request) GetMsgId() uint32 {
+	return r.data.GetMsgId()
+}

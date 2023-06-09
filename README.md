@@ -16,19 +16,13 @@ type MyRoute struct {
 
 func (mr *MyRoute) PreHandler(request ziface.IRequest) {
 	fmt.Println("PreHandler execute...")
-	fmt.Printf("recv %s from client\r\n", string(request.GetData()))
+	fmt.Println("MsgId:", request.GetMsgId(), " data:", string(request.GetData()))
 }
 
 func (mr *MyRoute) Handler(request ziface.IRequest) {
 	fmt.Println("Handler execute...")
-	//if err := c.HandleFunc(c.Conn, buf, cnt); err != nil {
-	//	fmt.Println("call Handler Api error...")
-	//	c.ExitBufferChan <- true
-	//	return
-	//}
-	_, err := request.GetConnection().GetTcpConnection().Write([]byte("ping...ping...ping"))
-	if err != nil {
-		fmt.Println("write error")
+	if err := request.GetConnection().SendMsg(0, []byte("ping...ping...ping")); err != nil {
+		fmt.Println(err)
 	}
 }
 
@@ -186,6 +180,66 @@ func main() {
 	}
 
 }
+```
+
+
+
+DataPackage.go
+```go
+package main
+
+import (
+	"fmt"
+	"io"
+	"net"
+	"time"
+	"zinx_learn/znet"
+)
+
+func main() {
+	fmt.Println("client test start...")
+	conn, err := net.Dial("tcp4", "127.0.0.1:9501")
+	if err != nil {
+		fmt.Println("connect server error")
+	}
+
+	for {
+		dp := znet.NewDataPack()
+		msg := znet.NewMessage([]byte("Hello, World"), 0)
+		packData, err := dp.Pack(msg)
+		if err != nil {
+			return
+		}
+		conn.Write(packData)
+		headData := make([]byte, dp.GetHeadLen())
+
+		cnts, err := io.ReadFull(conn, headData)
+		if cnts == 0 {
+			fmt.Println("server close")
+			return
+		}
+		if err != nil && err != io.EOF {
+			fmt.Println("read error")
+			continue
+		}
+		unpackData, err := dp.UnPack(headData)
+		if err != nil {
+			return
+		}
+		if unpackData.GetDataLen() > 0 {
+			data := unpackData.(*znet.Message)
+			data.Data = make([]byte, data.GetDataLen())
+			_, err = io.ReadFull(conn, data.Data)
+			if err != nil {
+				return
+			}
+			fmt.Println("msg:", string(data.Data), " msgId:", data.MsgId)
+		}
+		//fmt.Printf("recv %d bytes from server, msg:%s\r\n", cnts, string(buf[:cnts]))
+		time.Sleep(time.Second * 2)
+	}
+}
+
 ```
 
 

@@ -1,6 +1,7 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -102,4 +103,21 @@ func (c *Connection) GetTcpConnection() *net.TCPConn {
 
 func (c *Connection) RemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
+}
+
+func (c *Connection) SendMsg(msgId uint32, data []byte) error {
+	if c.IsClose == true {
+		return errors.New("client has already closed")
+	}
+	dp := NewDataPack()
+	dataPack, err := dp.Pack(NewMessage(data, msgId))
+	if err != nil {
+		return err
+	}
+	_, err = c.Conn.Write(dataPack)
+	if err != nil {
+		c.ExitBufferChan <- true
+		return err
+	}
+	return nil
 }
