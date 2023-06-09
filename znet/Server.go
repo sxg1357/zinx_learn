@@ -1,6 +1,7 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -14,8 +15,27 @@ type Server struct {
 	Port       int
 }
 
+func NewServer(name string) ziface.IServer {
+	return &Server{
+		ServerName: name,
+		IpVersion:  "tcp4",
+		Ip:         "0.0.0.0",
+		Port:       9501,
+	}
+}
+
+func CallBakClientApi(conn *net.TCPConn, data []byte, cnt int) error {
+	//将客户端的数据回显
+	fmt.Println("[Conn Handle] CallBackToClient ... ")
+	if _, err := conn.Write(data[:cnt]); err != nil {
+		fmt.Println("write back buf err ", err)
+		return errors.New("CallBakClientApi error")
+	}
+	return nil
+}
+
 func (s *Server) Start() {
-	fmt.Printf("[%s v0.1] start listening on %s:%d\r\n", s.ServerName, s.Ip, s.Port)
+	fmt.Printf("[%s] start listening on %s:%d\r\n", s.ServerName, s.Ip, s.Port)
 
 	addr, err := net.ResolveTCPAddr(s.IpVersion, fmt.Sprintf("%s:%d", s.Ip, s.Port))
 	if err != nil {
@@ -30,26 +50,21 @@ func (s *Server) Start() {
 			return
 		}
 
+		var cid uint32
+		cid = 0
 		for {
 			conn, err := listener.AcceptTCP()
 			if err != nil {
 				fmt.Println("AcceptTCP failed...")
 				continue
 			}
-			//接收端哦客户端连接开启一个协程处理消息
+			//接收客户端连接开启一个协程处理消息
 			go func() {
-				for {
-					buf := make([]byte, 512)
-					cnt, err := conn.Read(buf)
-					if err != nil {
-						fmt.Println("recv buf err ", err)
-						continue
-					}
-					if _, err := conn.Write(buf[:cnt]); err != nil {
-						fmt.Println("write back buf err ", err)
-						continue
-					}
-				}
+				dealConn := NewConnection(conn, cid, CallBakClientApi)
+				cid++
+
+				//启动一个协程处理当前连接的业务
+				go dealConn.Start()
 			}()
 		}
 	}()
@@ -64,13 +79,4 @@ func (s *Server) Server() {
 
 func (s *Server) Stop() {
 	fmt.Printf("[Stop] %s server...\r\n", s.ServerName)
-}
-
-func NewServer(name string) ziface.IServer {
-	return &Server{
-		ServerName: name,
-		IpVersion:  "tcp4",
-		Ip:         "0.0.0.0",
-		Port:       9501,
-	}
 }
