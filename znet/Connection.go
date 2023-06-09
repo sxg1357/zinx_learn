@@ -12,16 +12,17 @@ type Connection struct {
 	ConnId         uint32
 	IsClose        bool
 	ExitBufferChan chan bool
-	HandleFunc     ziface.HandleFunc
+	//HandleFunc     ziface.HandleFunc
+	Router ziface.IRouter
 }
 
-func NewConnection(conn *net.TCPConn, connId uint32, HandlerApi ziface.HandleFunc) *Connection {
+func NewConnection(conn *net.TCPConn, connId uint32, router ziface.IRouter) *Connection {
 	return &Connection{
 		Conn:           conn,
 		ConnId:         connId,
 		IsClose:        false,
 		ExitBufferChan: make(chan bool),
-		HandleFunc:     HandlerApi,
+		Router:         router,
 	}
 }
 
@@ -53,11 +54,20 @@ func (c *Connection) StartReader() {
 			c.ExitBufferChan <- true
 			continue
 		}
-		if err := c.HandleFunc(c.Conn, buf, cnt); err != nil {
-			fmt.Println("call Handler Api error...")
-			c.ExitBufferChan <- true
-			return
+		//if err := c.HandleFunc(c.Conn, buf, cnt); err != nil {
+		//	fmt.Println("call Handler Api error...")
+		//	c.ExitBufferChan <- true
+		//	return
+		//}
+		req := Request{
+			conn: c,
+			data: buf[:cnt],
 		}
+		go func(request ziface.IRequest) {
+			c.Router.PreHandler(request)
+			c.Router.Handler(request)
+			c.Router.PostHandler(request)
+		}(&req)
 	}
 }
 

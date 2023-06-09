@@ -1,7 +1,6 @@
 package znet
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -13,6 +12,7 @@ type Server struct {
 	IpVersion  string
 	Ip         string
 	Port       int
+	Router     ziface.IRouter
 }
 
 func NewServer(name string) ziface.IServer {
@@ -21,18 +21,19 @@ func NewServer(name string) ziface.IServer {
 		IpVersion:  "tcp4",
 		Ip:         "0.0.0.0",
 		Port:       9501,
+		Router:     nil,
 	}
 }
 
-func CallBakClientApi(conn *net.TCPConn, data []byte, cnt int) error {
-	//将客户端的数据回显
-	fmt.Println("[Conn Handle] CallBackToClient ... ")
-	if _, err := conn.Write(data[:cnt]); err != nil {
-		fmt.Println("write back buf err ", err)
-		return errors.New("CallBakClientApi error")
-	}
-	return nil
-}
+//func CallBakClientApi(conn *net.TCPConn, data []byte, cnt int) error {
+//	//将客户端的数据回显
+//	fmt.Println("[Conn Handle] CallBackToClient ... ")
+//	if _, err := conn.Write(data[:cnt]); err != nil {
+//		fmt.Println("write back buf err ", err)
+//		return errors.New("CallBakClientApi error")
+//	}
+//	return nil
+//}
 
 func (s *Server) Start() {
 	fmt.Printf("[%s] start listening on %s:%d\r\n", s.ServerName, s.Ip, s.Port)
@@ -60,7 +61,7 @@ func (s *Server) Start() {
 			}
 			//接收客户端连接开启一个协程处理消息
 			go func() {
-				dealConn := NewConnection(conn, cid, CallBakClientApi)
+				dealConn := NewConnection(conn, cid, s.Router)
 				cid++
 
 				//启动一个协程处理当前连接的业务
@@ -79,4 +80,8 @@ func (s *Server) Server() {
 
 func (s *Server) Stop() {
 	fmt.Printf("[Stop] %s server...\r\n", s.ServerName)
+}
+
+func (s *Server) AddRouter(route ziface.IRouter) {
+	s.Router = route
 }
