@@ -43,7 +43,7 @@ func (c *Connection) StartReader() {
 	defer c.Stop()
 	for {
 		buf := make([]byte, 512)
-		cnt, err := c.Conn.Read(buf)
+		cnt, err := c.GetTcpConnection().Read(buf)
 		if cnt == 0 {
 			fmt.Println("client close...")
 			c.ExitBufferChan <- true

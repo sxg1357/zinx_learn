@@ -12,8 +12,8 @@ type GlobalObj struct {
 	Host         string
 	Port         int
 	Version      string
-	MaxConn      int
-	MaxPacketLen int
+	MaxConn      uint32
+	MaxPacketLen uint32
 }
 
 var GlobalObject *GlobalObj
