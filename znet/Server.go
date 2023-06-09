@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"zinx_learn/utils"
 	"zinx_learn/ziface"
 )
 
@@ -15,12 +16,13 @@ type Server struct {
 	Router     ziface.IRouter
 }
 
-func NewServer(name string) ziface.IServer {
+func NewServer() ziface.IServer {
+	//utils.GlobalObject.Reload()
 	return &Server{
-		ServerName: name,
+		ServerName: utils.GlobalObject.Name,
 		IpVersion:  "tcp4",
-		Ip:         "0.0.0.0",
-		Port:       9501,
+		Ip:         utils.GlobalObject.Host,
+		Port:       utils.GlobalObject.Port,
 		Router:     nil,
 	}
 }
@@ -36,7 +38,11 @@ func NewServer(name string) ziface.IServer {
 //}
 
 func (s *Server) Start() {
-	fmt.Printf("[%s] start listening on %s:%d\r\n", s.ServerName, s.Ip, s.Port)
+	fmt.Printf("server start listening on %s:%d\r\n", s.Ip, s.Port)
+	fmt.Printf("[Zinx] Version: %s, MaxConn: %d,  MaxPacketLen: %d\n",
+		utils.GlobalObject.Version,
+		utils.GlobalObject.MaxConn,
+		utils.GlobalObject.MaxPacketLen)
 
 	addr, err := net.ResolveTCPAddr(s.IpVersion, fmt.Sprintf("%s:%d", s.Ip, s.Port))
 	if err != nil {
