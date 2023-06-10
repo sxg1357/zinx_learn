@@ -12,10 +12,9 @@ type Connection struct {
 	Conn           *net.TCPConn
 	ConnId         uint32
 	IsClose        bool
+	MsgHandler     ziface.IMsgHandler
+	msgChan        chan []byte
 	ExitBufferChan chan bool
-	//HandleFunc     ziface.HandleFunc
-	//Router     ziface.IRouter
-	MsgHandler ziface.IMsgHandler
 }
 
 func NewConnection(conn *net.TCPConn, connId uint32, MsgHandler ziface.IMsgHandler) *Connection {
@@ -23,6 +22,7 @@ func NewConnection(conn *net.TCPConn, connId uint32, MsgHandler ziface.IMsgHandl
 		Conn:           conn,
 		ConnId:         connId,
 		IsClose:        false,
+		msgChan:        make(chan []byte),
 		ExitBufferChan: make(chan bool),
 		MsgHandler:     MsgHandler,
 	}
@@ -30,6 +30,7 @@ func NewConnection(conn *net.TCPConn, connId uint32, MsgHandler ziface.IMsgHandl
 
 func (c *Connection) Start() {
 	go c.StartReader()
+	go c.StartWriter()
 	for {
 		select {
 		case <-c.ExitBufferChan:
@@ -80,6 +81,20 @@ func (c *Connection) StartReader() {
 	}
 }
 
+func (c *Connection) StartWriter() {
+	for {
+		select {
+		case data := <-c.msgChan:
+			if _, err := c.GetTcpConnection().Write(data); err != nil {
+				c.ExitBufferChan <- true
+			}
+		case <-c.ExitBufferChan:
+			fmt.Println("Reader Goroutine exit")
+			return
+		}
+	}
+}
+
 func (c *Connection) Stop() {
 	fmt.Printf("ConnId:%d stop\r\n", c.ConnId)
 	if c.IsClose == true {
@@ -111,10 +126,6 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.Conn.Write(dataPack)
-	if err != nil {
-		c.ExitBufferChan <- true
-		return err
-	}
+	c.msgChan <- dataPack
 	return nil
 }
