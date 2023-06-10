@@ -33,6 +33,7 @@ func NewConnection(conn *net.TCPConn, connId uint32, MsgHandler ziface.IMsgHandl
 	}
 	conMgr := c.TcpServer.GetConnMgr()
 	conMgr.Add(c)
+	c.TcpServer.CallConnOnStart(c)
 	return c
 }
 
@@ -125,6 +126,7 @@ func (c *Connection) Stop() {
 	c.IsClose = true
 	c.ExitBufferChan <- true
 	c.Conn.Close()
+	c.TcpServer.CallConnOnStop(c)
 }
 
 func (c *Connection) GetConnId() uint32 {
