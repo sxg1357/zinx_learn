@@ -68,6 +68,11 @@ func (s *Server) Start() {
 				fmt.Println("AcceptTCP failed...")
 				continue
 			}
+			if s.ConnMgr.Len() > utils.GlobalObject.MaxConn {
+				fmt.Println("exceed max connection number")
+				conn.Close()
+				continue
+			}
 			//接收客户端连接开启一个协程处理消息
 			go func() {
 				dealConn := NewConnection(conn, cid, s.MsgHandler, s)

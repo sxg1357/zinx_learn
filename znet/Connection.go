@@ -15,6 +15,7 @@ type Connection struct {
 	IsClose        bool
 	MsgHandler     ziface.IMsgHandler
 	msgChan        chan []byte
+	msgChanBuffer  chan []byte
 	ExitBufferChan chan bool
 	TcpServer      ziface.IServer
 }
@@ -25,6 +26,7 @@ func NewConnection(conn *net.TCPConn, connId uint32, MsgHandler ziface.IMsgHandl
 		ConnId:         connId,
 		IsClose:        false,
 		msgChan:        make(chan []byte),
+		msgChanBuffer:  make(chan []byte, utils.GlobalObject.MaxPacketLen),
 		ExitBufferChan: make(chan bool),
 		MsgHandler:     MsgHandler,
 		TcpServer:      server,
@@ -98,6 +100,15 @@ func (c *Connection) StartWriter() {
 			if _, err := c.GetTcpConnection().Write(data); err != nil {
 				c.ExitBufferChan <- true
 			}
+		case data, ok := <-c.msgChanBuffer:
+			if ok {
+				if _, err := c.GetTcpConnection().Write(data); err != nil {
+					c.ExitBufferChan <- true
+				}
+			} else {
+				fmt.Println("msgBufferChan is closed")
+				break
+			}
 		case <-c.ExitBufferChan:
 			fmt.Println("Reader Goroutine exit")
 			return
@@ -137,6 +148,6 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 	if err != nil {
 		return err
 	}
-	c.msgChan <- dataPack
+	c.msgChanBuffer <- dataPack
 	return nil
 }
