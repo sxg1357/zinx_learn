@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"zinx_learn/utils"
 	"zinx_learn/ziface"
 )
@@ -18,6 +19,8 @@ type Connection struct {
 	msgChanBuffer  chan []byte
 	ExitBufferChan chan bool
 	TcpServer      ziface.IServer
+	Property       map[string]interface{}
+	PropertyLock   sync.RWMutex
 }
 
 func NewConnection(conn *net.TCPConn, connId uint32, MsgHandler ziface.IMsgHandler, server ziface.IServer) *Connection {
@@ -30,10 +33,13 @@ func NewConnection(conn *net.TCPConn, connId uint32, MsgHandler ziface.IMsgHandl
 		ExitBufferChan: make(chan bool),
 		MsgHandler:     MsgHandler,
 		TcpServer:      server,
+		Property:       make(map[string]interface{}),
 	}
 	conMgr := c.TcpServer.GetConnMgr()
 	conMgr.Add(c)
 	c.TcpServer.CallConnOnStart(c)
+	c.SetProperty("name", "sxg")
+	c.SetProperty("age", 25)
 	return c
 }
 
@@ -139,6 +145,34 @@ func (c *Connection) GetTcpConnection() *net.TCPConn {
 
 func (c *Connection) RemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
+}
+
+func (c *Connection) SetProperty(key string, val interface{}) {
+	defer c.PropertyLock.Unlock()
+	c.PropertyLock.Lock()
+	c.Property[key] = val
+}
+
+func (c *Connection) GetProperty(key string) interface{} {
+	defer c.PropertyLock.RUnlock()
+	c.PropertyLock.RLock()
+	if val, ok := c.Property[key]; ok {
+		return val
+	} else {
+		fmt.Println("property not found")
+		return nil
+	}
+}
+
+func (c *Connection) RemoveProperty(key string) {
+	defer c.PropertyLock.Unlock()
+	c.PropertyLock.Lock()
+	if _, ok := c.Property[key]; ok {
+		delete(c.Property, key)
+		fmt.Println("remove property ", key, " ok")
+	} else {
+		fmt.Println("property not found")
+	}
 }
 
 func (c *Connection) SendMsg(msgId uint32, data []byte) error {

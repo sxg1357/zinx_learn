@@ -19,43 +19,64 @@ type MyRoute2 struct {
 }
 
 func (mr *MyRoute1) PreHandler(request ziface.IRequest) {
-	fmt.Println("PreHandler1 execute...")
+	//fmt.Println("PreHandler1 execute...")
 	fmt.Println("MsgId:", request.GetMsgId(), " data:", string(request.GetData()))
 }
 
 func (mr *MyRoute1) Handler(request ziface.IRequest) {
-	fmt.Println("Handler1 execute...")
+	//fmt.Println("Handler1 execute...")
 	if err := request.GetConnection().SendMsg(request.GetMsgId(), []byte("ping...ping...ping")); err != nil {
 		fmt.Println(err)
 	}
 }
 
 func (mr *MyRoute2) PostHandler(request ziface.IRequest) {
-	fmt.Println("PostHandler1 execute...")
+	//fmt.Println("PostHandler1 execute...")
 }
 
 func (mr *MyRoute2) PreHandler(request ziface.IRequest) {
-	fmt.Println("PreHandler2 execute...")
+	//fmt.Println("PreHandler2 execute...")
 	fmt.Println("MsgId:", request.GetMsgId(), " data:", string(request.GetData()))
 }
 
 func (mr *MyRoute2) Handler(request ziface.IRequest) {
-	fmt.Println("Handler2 execute...")
+	//fmt.Println("Handler2 execute...")
 	if err := request.GetConnection().SendMsg(request.GetMsgId(), []byte("ping...ping...ping")); err != nil {
 		fmt.Println(err)
 	}
 }
 
 func (mr *MyRoute1) PostHandler(request ziface.IRequest) {
-	fmt.Println("PostHandler2 execute...")
+	//fmt.Println("PostHandler2 execute...")
+}
+
+func OnConnect(connection ziface.IConnection) {
+	fmt.Println("connId:", connection.GetConnId(), " connected")
+}
+
+func OnStop(connection ziface.IConnection) {
+	fmt.Println("connId", connection.GetConnId(), " closed")
+	name := connection.GetProperty("name")
+	if name != nil {
+		fmt.Println("name property is ", name)
+	}
+	age := connection.GetProperty("age")
+	if age != nil {
+		fmt.Println("age property is ", age)
+	}
+	connection.RemoveProperty("name")
+	connection.RemoveProperty("age")
 }
 
 func main() {
 	s := znet.NewServer()
 	s.AddRouter(1, &MyRoute1{})
 	s.AddRouter(2, &MyRoute2{})
+	s.SetConnOnStart(OnConnect)
+	s.SetConnOnStop(OnStop)
 	s.Server()
 }
+
 ```
 
 Client.go
