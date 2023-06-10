@@ -10,32 +10,52 @@ import (
 	"zinx_learn/znet"
 )
 
-type MyRoute struct {
+type MyRoute1 struct {
 	znet.BaseRouter
 }
 
-func (mr *MyRoute) PreHandler(request ziface.IRequest) {
-	fmt.Println("PreHandler execute...")
+type MyRoute2 struct {
+	znet.BaseRouter
+}
+
+func (mr *MyRoute1) PreHandler(request ziface.IRequest) {
+	fmt.Println("PreHandler1 execute...")
 	fmt.Println("MsgId:", request.GetMsgId(), " data:", string(request.GetData()))
 }
 
-func (mr *MyRoute) Handler(request ziface.IRequest) {
-	fmt.Println("Handler execute...")
-	if err := request.GetConnection().SendMsg(0, []byte("ping...ping...ping")); err != nil {
+func (mr *MyRoute1) Handler(request ziface.IRequest) {
+	fmt.Println("Handler1 execute...")
+	if err := request.GetConnection().SendMsg(request.GetMsgId(), []byte("ping...ping...ping")); err != nil {
 		fmt.Println(err)
 	}
 }
 
-func (mr *MyRoute) PostHandler(request ziface.IRequest) {
-	fmt.Println("PostHandler execute...")
+func (mr *MyRoute2) PostHandler(request ziface.IRequest) {
+	fmt.Println("PostHandler1 execute...")
+}
+
+func (mr *MyRoute2) PreHandler(request ziface.IRequest) {
+	fmt.Println("PreHandler2 execute...")
+	fmt.Println("MsgId:", request.GetMsgId(), " data:", string(request.GetData()))
+}
+
+func (mr *MyRoute2) Handler(request ziface.IRequest) {
+	fmt.Println("Handler2 execute...")
+	if err := request.GetConnection().SendMsg(request.GetMsgId(), []byte("ping...ping...ping")); err != nil {
+		fmt.Println(err)
+	}
+}
+
+func (mr *MyRoute1) PostHandler(request ziface.IRequest) {
+	fmt.Println("PostHandler2 execute...")
 }
 
 func main() {
 	s := znet.NewServer()
-	s.AddRouter(&MyRoute{})
+	s.AddRouter(1, &MyRoute1{})
+	s.AddRouter(2, &MyRoute2{})
 	s.Server()
 }
-
 ```
 
 Client.go
@@ -184,7 +204,7 @@ func main() {
 
 
 
-DataPackage.go
+DataPackClient.go
 ```go
 package main
 
@@ -205,14 +225,18 @@ func main() {
 
 	for {
 		dp := znet.NewDataPack()
-		msg := znet.NewMessage([]byte("Hello, World"), 0)
-		packData, err := dp.Pack(msg)
-		if err != nil {
-			return
-		}
-		conn.Write(packData)
-		headData := make([]byte, dp.GetHeadLen())
+		//发给路由1
+		msg1 := znet.NewMessage([]byte("Hello"), 1)
+		packData1, _ := dp.Pack(msg1)
+		conn.Write(packData1)
 
+		//发给路由2
+		msg2 := znet.NewMessage([]byte("World"), 2)
+		packData2, _ := dp.Pack(msg2)
+		conn.Write(packData2)
+
+		//解析数据包
+		headData := make([]byte, dp.GetHeadLen())
 		cnts, err := io.ReadFull(conn, headData)
 		if cnts == 0 {
 			fmt.Println("server close")

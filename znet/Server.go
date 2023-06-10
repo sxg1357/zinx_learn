@@ -13,7 +13,7 @@ type Server struct {
 	IpVersion  string
 	Ip         string
 	Port       int
-	Router     ziface.IRouter
+	MsgHandler ziface.IMsgHandler
 }
 
 func NewServer() ziface.IServer {
@@ -23,7 +23,7 @@ func NewServer() ziface.IServer {
 		IpVersion:  "tcp4",
 		Ip:         utils.GlobalObject.Host,
 		Port:       utils.GlobalObject.Port,
-		Router:     nil,
+		MsgHandler: NewMsgHandler(),
 	}
 }
 
@@ -67,7 +67,7 @@ func (s *Server) Start() {
 			}
 			//接收客户端连接开启一个协程处理消息
 			go func() {
-				dealConn := NewConnection(conn, cid, s.Router)
+				dealConn := NewConnection(conn, cid, s.MsgHandler)
 				cid++
 
 				//启动一个协程处理当前连接的业务
@@ -88,6 +88,6 @@ func (s *Server) Stop() {
 	fmt.Printf("[Stop] %s server...\r\n", s.ServerName)
 }
 
-func (s *Server) AddRouter(route ziface.IRouter) {
-	s.Router = route
+func (s *Server) AddRouter(msgId uint32, route ziface.IRouter) {
+	s.MsgHandler.AddRouter(msgId, route)
 }
