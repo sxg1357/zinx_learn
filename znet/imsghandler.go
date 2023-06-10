@@ -3,11 +3,14 @@ package znet
 import (
 	"fmt"
 	"strconv"
+	"zinx_learn/utils"
 	"zinx_learn/ziface"
 )
 
 type IMsgHandler struct {
-	Apis map[uint32]ziface.IRouter
+	Apis           map[uint32]ziface.IRouter
+	WorkerPoolSize uint32
+	TaskQueue      []chan ziface.IRequest
 }
 
 func (ih *IMsgHandler) AddRouter(msgId uint32, router ziface.IRouter) {
@@ -28,8 +31,32 @@ func (ih *IMsgHandler) DoMsgHandler(request ziface.IRequest) {
 	handler.PostHandler(request)
 }
 
+func (ih *IMsgHandler) StartOneWorker(workerId int, taskQueue chan ziface.IRequest) {
+	fmt.Println("WorkerId = ", workerId, "is started")
+	for {
+		select {
+		case request := <-taskQueue:
+			ih.DoMsgHandler(request)
+		}
+	}
+}
+
+func (ih *IMsgHandler) StartWorkerPool() {
+	for i := 0; i < int(ih.WorkerPoolSize); i++ {
+		ih.TaskQueue[i] = make(chan ziface.IRequest, utils.GlobalObject.MaxWorkerTaskLen)
+		go ih.StartOneWorker(i, ih.TaskQueue[i])
+	}
+}
+
+func (ih *IMsgHandler) SendMsgToTaskQueue(request ziface.IRequest) {
+	WorkerId := request.GetConnection().GetConnId() % ih.WorkerPoolSize
+	ih.TaskQueue[WorkerId] <- request
+}
+
 func NewMsgHandler() *IMsgHandler {
 	return &IMsgHandler{
-		Apis: make(map[uint32]ziface.IRouter),
+		Apis:           make(map[uint32]ziface.IRouter),
+		WorkerPoolSize: utils.GlobalObject.WorkerPoolSize,
+		TaskQueue:      make([]chan ziface.IRequest, utils.GlobalObject.WorkerPoolSize),
 	}
 }

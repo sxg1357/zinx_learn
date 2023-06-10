@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"zinx_learn/utils"
 	"zinx_learn/ziface"
 )
 
@@ -77,7 +78,11 @@ func (c *Connection) StartReader() {
 			conn: c,
 			data: msg,
 		}
-		go c.MsgHandler.DoMsgHandler(req)
+		if utils.GlobalObject.WorkerPoolSize > 0 {
+			c.MsgHandler.SendMsgToTaskQueue(req)
+		} else {
+			go c.MsgHandler.DoMsgHandler(req)
+		}
 	}
 }
 

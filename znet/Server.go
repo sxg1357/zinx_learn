@@ -51,6 +51,7 @@ func (s *Server) Start() {
 	}
 
 	go func() {
+		go s.MsgHandler.StartWorkerPool()
 		listener, err := net.ListenTCP(s.IpVersion, addr)
 		if err != nil {
 			fmt.Println("ListenTCP failed...")
