@@ -14,6 +14,7 @@ type Server struct {
 	Ip         string
 	Port       int
 	MsgHandler ziface.IMsgHandler
+	ConnMgr    ziface.IConnManager
 }
 
 func NewServer() ziface.IServer {
@@ -24,6 +25,7 @@ func NewServer() ziface.IServer {
 		Ip:         utils.GlobalObject.Host,
 		Port:       utils.GlobalObject.Port,
 		MsgHandler: NewMsgHandler(),
+		ConnMgr:    NewConnManager(),
 	}
 }
 
@@ -68,7 +70,7 @@ func (s *Server) Start() {
 			}
 			//接收客户端连接开启一个协程处理消息
 			go func() {
-				dealConn := NewConnection(conn, cid, s.MsgHandler)
+				dealConn := NewConnection(conn, cid, s.MsgHandler, s)
 				cid++
 
 				//启动一个协程处理当前连接的业务
@@ -91,4 +93,8 @@ func (s *Server) Stop() {
 
 func (s *Server) AddRouter(msgId uint32, route ziface.IRouter) {
 	s.MsgHandler.AddRouter(msgId, route)
+}
+
+func (s *Server) GetConnMgr() ziface.IConnManager {
+	return s.ConnMgr
 }

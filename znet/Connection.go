@@ -16,17 +16,22 @@ type Connection struct {
 	MsgHandler     ziface.IMsgHandler
 	msgChan        chan []byte
 	ExitBufferChan chan bool
+	TcpServer      ziface.IServer
 }
 
-func NewConnection(conn *net.TCPConn, connId uint32, MsgHandler ziface.IMsgHandler) *Connection {
-	return &Connection{
+func NewConnection(conn *net.TCPConn, connId uint32, MsgHandler ziface.IMsgHandler, server ziface.IServer) *Connection {
+	c := &Connection{
 		Conn:           conn,
 		ConnId:         connId,
 		IsClose:        false,
 		msgChan:        make(chan []byte),
 		ExitBufferChan: make(chan bool),
 		MsgHandler:     MsgHandler,
+		TcpServer:      server,
 	}
+	conMgr := c.TcpServer.GetConnMgr()
+	conMgr.Add(c)
+	return c
 }
 
 func (c *Connection) Start() {
@@ -105,6 +110,7 @@ func (c *Connection) Stop() {
 	if c.IsClose == true {
 		return
 	}
+	c.TcpServer.GetConnMgr().Remove(c)
 	c.IsClose = true
 	c.ExitBufferChan <- true
 	c.Conn.Close()
